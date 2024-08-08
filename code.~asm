@@ -1,0 +1,411 @@
+ORG 100h
+MACRO subBytes input,sBox
+Local L1
+
+mov CX,16
+mov SI,0
+L1: mov AL,input[SI]
+mov BL,10h
+div BL
+mov DL,AH
+mul BL
+add AX,DX
+mov BX,AX
+mov DL,sBox[BX]
+mov input[SI],DL
+inc SI
+LOOP L1
+
+ENDM
+
+MACRO shiftRows input
+Local L2
+Local L3
+Local End1
+Local increment
+
+mov CX,4
+mov SI,0
+L3: mov BX,CX
+mov DX,4
+sub DX,BX
+jz increment
+jnz L2
+increment: add SI,4
+Loop L3
+L2:  cmp CX,0
+jz  End1
+mov AL,input[0+SI]
+mov BL, input[1+SI]
+mov input[0+SI],BL
+mov BL, input[2+SI]
+mov input[1+SI],BL
+mov BL, input[3+SI]
+mov input[2+SI],BL
+mov input[3+SI],AL
+dec DX
+jnz L2
+jz increment
+
+End1:
+ENDM
+
+
+MACRO mixColumns input,moduolo
+Local multip1
+Local multip2
+Local multip3
+Local L5
+Local L6
+Local End1
+Local M2
+Local M3
+
+
+mov SI,0
+mov BP,0
+mov DI,0
+L5: mov AX,4
+mul BP
+add AX,DI
+mov BX,AX
+mov CH,input[BX]
+mov AX,4
+mul SI
+add AX,BP
+mov BX,AX
+mov CL,moduolo[BX]
+cmp CL,1
+jz multip1
+cmp CL,2
+jz multip2
+cmp CL,3
+jz multip3
+L6: inc BP
+cmp BP,4
+jnz L5
+pop AX
+pop BX
+xor AX,BX
+pop BX
+xor AX,BX
+pop BX
+xor AX,BX
+push AX
+inc SI
+mov BP,0
+cmp SI,4
+jnz L5
+pop AX
+mov input[12+DI],AH
+pop AX
+mov input[8+DI],AH
+pop AX
+mov input[4+DI],AH
+pop AX
+mov input[0+DI],AH
+mov SI,0
+inc DI
+cmp DI,4
+jnz L5
+jz End1
+
+
+multip1:add CH,0
+push CX
+jmp L6
+
+multip2:add CH,0
+js M2
+sal CH,1
+push CX
+jmp L6
+M2:sal CH,1
+xor CH,1Bh
+push CX
+jmp L6
+
+multip3:mov BL,CH
+add CH,0
+js M3
+sal CH,1
+xor CH,BL
+push CX
+jmp L6
+M3: sal CH,1
+xor CH,1Bh
+xor CH,BL
+push CX
+jmp L6
+
+
+End1:
+ENDM
+
+
+MACRO addRoundKey input,cipherKey
+Local L4
+mov SI,0
+L4: mov AL,input[SI]
+mov AH,cipherKey[SI]
+XOR AL,AH
+mov input[SI],AL
+inc SI
+cmp SI,16
+jnz L4
+ENDM
+
+MACRO columnzero cipherKey,sBox, roundKey
+Local L7
+mov AL,cipherkey[3]
+mov BL,cipherkey[7]
+mov roundKey[3],BL
+mov BL,cipherkey[11]
+mov roundKey[7],BL
+mov BL,cipherkey[15]
+mov roundKey[11],BL
+mov roundKey[15],AL
+mov CX,4
+mov SI,3
+L7: mov AL, roundKey[SI]
+mov BL,10h
+div BL
+mov DL,AH
+mul BL
+add AX,DX
+mov BX,AX
+mov DL,sBox[BX]
+mov roundKey[SI],DL
+add SI,4
+LOOP L7
+mov AL,roundKey[3]
+mov BL,rCon[0]
+xor BL,AL
+mov roundKey[3],BL
+mov AL,roundKey[7]
+mov BL,rCon[10]
+xor BL,AL
+mov roundKey[7],BL
+mov AL,roundKey[11]
+mov BL,rCon[20]
+xor BL,AL
+mov roundKey[11],BL
+mov AL,roundKey[15]
+mov BL,rCon[30]
+xor BL,AL
+mov roundKey[15],BL
+
+mov AL,roundKey[3]
+mov BL,cipherkey[0]
+xor BL,AL
+mov roundKey[0],BL
+mov AL,roundKey[7]
+mov BL,cipherkey[4]
+xor BL,AL
+mov roundKey[4],BL
+mov AL,roundKey[11]
+mov BL,cipherkey[8]
+xor BL,AL
+mov roundKey[8],BL
+mov AL,roundKey[15]
+mov BL,cipherkey[12]
+xor BL,AL
+mov roundKey[12],BL
+
+ENDM
+
+
+
+MACRO keyOnetwoThree roundKey,cipherKey
+Local L8
+Local end1
+mov SI,1
+mov BP,0
+L8: mov AX,4
+mul BP
+add AX,SI
+dec AX
+mov BX,AX
+mov CL,roundkey[BX]
+mov AX,4
+mul BP
+add AX,SI
+mov BX,AX
+mov DL, cipherkey[BX]
+Xor DL,CL
+mov roundkey[BX],DL
+inc BP
+cmp BP,4
+jnz L8
+inc SI
+mov BP,0
+cmp SI,4
+jnz L8
+jz  end1
+end1:
+ENDM
+
+
+
+.data segment
+
+sBox DB 63H,7cH,77H,7bH,0f2H,6bH,6fH,0c5H,30H,1H,67H,2bH,0feH,0d7H,0abH,76H
+DB 0caH,82H,0c9H,7dH,0faH,59H,47H,0f0H,0adH,0d4H,0a2H,0afH,9cH,0a4H,72H,0c0H
+DB 0b7H,0fdH,93H,26H,36H,3fH,0f7H,0ccH,34H,0a5H,0e5H,0f1H,71H,0d8H,31H,15H
+DB 4H,0c7H,23H,0c3H,18H,96H,5H,9aH,7H,12H,80H,0e2H,0ebH,27H,0b2H,75H
+DB 9H,83H,2cH,1aH,1bH,6eH,5aH,0a0H,52H,3bH,0d6H,0b3H,29H,0e3H,2fH,84H
+DB 53H,0d1H,0H,0edH,20H,0fcH,0b1H,5bH,6aH,0cbH,0beH,39H,4aH,4cH,58H,0cfH
+DB 0d0H,0efH,0aaH,0fbH,43H,4dH,33H,85H,45H,0f9H,2H,7fH,50H,3cH,9fH,0a8H
+DB 51H,0a3H,40H,8fH,92H,9dH,38H,0f5H,0bcH,0b6H,0daH,21H,10H,0ffH,0f3H,0d2H
+DB 0cdH,00cH,13H,0ecH,5fH,97H,44H,17H,0c4H,0a7H,7eH,3dH,64H,5dH,19H,73H
+DB 60H,81H,4fH,0dcH,22H,2aH,90H,88H,46H,0eeH,0b8H,14H,0deH,5eH,0bH,0dbH
+DB 0e0H,32H,3aH,0aH,49H,6H,24H,5cH,0c2H,0d3H,0acH,62H,91H,95H,0e4H,79H
+DB 0e7H,0c8H,37H,6dH,8dH,0d5H,4eH,0a9H,6cH,56H,0f4H,0eaH,65H,7aH,0aeH,8H
+DB 0baH,78H,25H,2eH,1cH,0a6H,0b4H,0c6H,0e8H,0ddH,74H,1fH,4bH,0bdH,8bH,8aH
+DB 70H,3eH,0b5H,66H,48H,3H,0f6H,0eH,61H,35H,57H,0b9H,86H,0c1H,1dH,9eH
+DB 0e1H,0f8H,98H,11H,69H,0d9H,8eH,94H,9bH,1eH,87H,0e9H,0ceH,55H,28H,0dfH
+DB 8cH,0a1H,89H,0dH,0bfH,0e6H,42H,68H,41H,99H,2dH,0fH,0b0H,54H,0bbH,16H
+input DB 32H,88H,31H,0e0H,43H,5aH,31H,37H,0f6H,30H,98H,07h,0a8H,8dH,0a2H,34H
+cipherKey DB 2bH,28H,0abH,09H,7eH,0aeH,0f7H,0cfH,15H,0d2H,15H,4fH,16H,0a6H,88H,3cH
+moduolo  DB 02H,03H,01H,01H,01H,02H,03H,01H,01H,01H,02H,03H,03H,01H,01H,02H
+rCon DB 01H,02H,04H,08H,10H,20H,40H,80H,1bH,36H
+DB 0H,0H,0H,0H,0H,0H,0H,0H,0H,0H
+DB 0H,0H,0H,0H,0H,0H,0H,0H,0H,0H
+DB 0H,0H,0H,0H,0H,0H,0H,0H,0H,0H
+roundKey DB 0H,0H,0H,0H
+DB 0H,0H,0H,0H
+DB 0H,0H,0H,0H
+DB 0H,0H,0H,0H
+.code segment
+addRoundKey input,cipherKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+subBytes input,sBox
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+shiftRows input
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+mixColumns input,moduolo
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+columnzero cipherKey,sBox, roundKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+keyOnetwoThree roundKey,cipherKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+addRoundKey input,roundKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+mov CX,8
+L9:push CX
+subBytes input,sBox
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+shiftRows input
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+mixColumns input,moduolo
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+columnzero  roundKey,sBox, roundKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+keyOnetwoThree roundKey, roundKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+addRoundKey input,roundKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+pop CX
+loop L9
+subBytes input,sBox
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+shiftRows input
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+columnzero  roundKey,sBox, roundKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+keyOnetwoThree roundKey, roundKey
+mov AX,0
+mov BX,0
+mov DX,0
+mov SI,0
+mov DI,0
+mov BP,0
+addRoundKey input,roundKey
+RET
+
+
+
+
+
+
+; [SOURCE]: C:\EMU8086\MySource\ComCoProj.asm

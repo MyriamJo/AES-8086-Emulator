@@ -9,3 +9,6 @@ Subroutines implemented:
 1) Procedure reads the input stream from the user and another 
 procedure prints the result on the screen.
 2) Macros for encryption process Sub Bytes, Shift Rows, Mix Columns  (http://www.angelfire.com/biz7/atleast/mix_columns.pdf) and Add Round Key (cipher block).
+
+## Note
+The code is proprietary and not intended for copying or redistribution.

@@ -402,10 +402,3 @@ mov DI,0
 mov BP,0
 addRoundKey input,roundKey
 RET
-
-
-
-
-
-
-; [SOURCE]: C:\EMU8086\MySource\ComCoProj.asm
